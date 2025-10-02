@@ -60,4 +60,84 @@ int main() {
 
     return 0;
 }
+//gcc hw1_2.c -o hw1_2
+/*#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
+/* ====== 輔助函數：輸出一個子集合 ======
+   - 參數 elems 為元素字串陣列
+   - 參數 pick[i] = 1 表示選取第 i 個元素，0 表示不選取
+   - n 為元素總數
+
+void print_subset(char **elems, int *pick, int n) {
+    printf("(");
+    int first = 1; // 控制輸出格式，避免多餘逗號
+    for (int i = 0; i < n; ++i) {
+        if (pick[i]) { // 若 pick[i] = 1，代表該元素被選取
+            if (!first) printf(", "); // 在非第一個元素前加逗號
+            printf("%s", elems[i]);
+            first = 0;
+        }
+    }
+    printf(")\n");
+}
+
+/* ====== 遞迴函數：逐個決定是否選取元素 ======
+   - idx: 當前正在處理的元素索引
+   - n: 元素總數
+   - elems: 存放元素的字串陣列
+   - pick: 紀錄當前子集合選擇情況的陣列
+
+void powerset_dfs(int idx, int n, char **elems, int *pick) {
+    if (idx == n) { // 遞迴基底條件：所有元素皆處理完畢
+        print_subset(elems, pick, n); // 輸出當前子集合
+        return;
+    }
+
+    // 情況一：不選取 elems[idx]
+    pick[idx] = 0;
+    powerset_dfs(idx + 1, n, elems, pick);
+
+    // 情況二：選取 elems[idx]
+    pick[idx] = 1;
+    powerset_dfs(idx + 1, n, elems, pick);
+}
+
+/* ====== 主程式 ====== 
+int main() {
+    int n;
+    printf("輸入元素數量：");
+    scanf("%d", &n);
+
+    // 配置存放元素字串的陣列 (長度 = n)
+    // 注意：若 n=0，仍配置至少一個位置，避免 malloc(0) 的不確定行為
+    char **elems = (char**)malloc(sizeof(char*) * (n > 0 ? n : 1));
+
+    // 為每個元素分配字元空間 (最多 63 字元 + '\0')
+    for (int i = 0; i < n; ++i) {
+        elems[i] = (char*)malloc(64);
+    }
+
+    // 輸入元素內容
+    printf("請輸入 %d 個元素（以空白分隔）：\n", n);
+    for (int i = 0; i < n; ++i) {
+        scanf("%s", elems[i]);
+    }
+
+    // 配置 pick 陣列，用來記錄每個元素是否被選取
+    int *pick = (int*)malloc(sizeof(int) * n);
+    for (int i = 0; i < n; ++i) pick[i] = 0;
+
+    // 呼叫遞迴函式，從索引 0 開始生成所有子集合
+    printf("\n所有子集合 (Power set)：\n");
+    powerset_dfs(0, n, elems, pick);
+
+    // 釋放記憶體，避免記憶體洩漏
+    for (int i = 0; i < n; ++i) free(elems[i]);
+    free(elems);
+    free(pick);
+
+    return 0;
+}
+*/
