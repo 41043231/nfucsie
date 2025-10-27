@@ -1,221 +1,397 @@
 # 41043231
 
-作業 (一)
+作業 (二)
 Problem 1
 
 ## 解題說明
 
-本題要求實作 Ackermann 函數 (Ackermann function)，並且分別使用 遞迴版本與非遞迴版本來完成。
-Ackermann 函數是一個經典的遞迴數學函數，定義如下：
+本題要求設計一個能進行多項式運算的程式，需以**抽象資料型態（ADT）**的概念實作 Polynomial 類別，
+並支援以下三種主要功能：
 
-<img width="657" height="135" alt="image" src="https://github.com/user-attachments/assets/58625674-9f03-4c59-b0c3-546bccd3e524" />
+1. **多項式加法（Add）**  
+   將兩個多項式中指數相同的項合併，指數不同的項則依照指數大小排列，  
+   最終輸出一個新的多項式作為加法結果。
+
+2. **多項式乘法（Mult）**  
+   將兩個多項式進行逐項相乘，並對結果中指數相同的項進行合併與排序，  
+   輸出乘法展開後的多項式。
+
+3. **多項式值的計算（Eval）**  
+   能代入一個指定的實數 \( x \) 值，計算該多項式在該點的函數值。
+
+<img width="1156" height="828" alt="image" src="https://github.com/user-attachments/assets/11066922-d28d-4d63-95dd-108d53e962d8" />
+<img width="1140" height="765" alt="image" src="https://github.com/user-attachments/assets/7053ef67-5691-4a76-af69-3363e0a5ef41" />
+<img width="1148" height="741" alt="image" src="https://github.com/user-attachments/assets/0ec521b7-b4fa-4474-b1fa-663cf646cbd3" />
 
 ### 解題策略
 
-1. 遞迴版本
-   直接依照數學公式翻寫成程式。
-   當 m=0 時，回傳 n+1；
-   當 n=0 且 m>0 時，回傳 A(m-1, 1)；
-   其他情況則回傳 A(m-1, A(m, n-1))。
+# 解題策略（Solution Strategy）
 
-2. 非遞迴版本
-   因為 Ackermann 函數遞迴深度可能很大，容易造成 系統呼叫堆疊溢位 (Stack Overflow)。
-   改以手動模擬堆疊的方式實作，把遞迴過程展開為迴圈。
-   利用一個自製的堆疊結構存放尚未處理的 m 值，逐步計算出結果。
+本題採用 **物件導向程式設計（Object-Oriented Programming, OOP）** 的思維，  
+以類別（Class）封裝多項式資料與相關運算，達成模組化與可維護性高的設計。  
+整體策略分為三個階段：**輸入 → 運算 → 輸出**。
 
-3. 主程式流程
-   讓使用者輸入 m 與 n。
-   提供選項：
-      (1) 使用遞迴版本計算。
-      (2) 使用非遞迴版本計算。
-      (3) 兩者都算並比對結果是否一致。
+---
+
+## 一、資料結構設計
+
+1. **Term 類別**  
+   - 負責儲存多項式中單一項的資料，包括：
+     - `coef`：係數（float）
+     - `exp`：指數（int）  
+   - 設為 `private`，確保資料封裝性，並以 `friend class Polynomial` 讓 `Polynomial` 可直接存取。
+
+2. **Polynomial 類別**  
+   - 以動態陣列 `termArray` 儲存所有非零項。  
+   - 包含三個主要屬性：
+     - `terms`：實際項數
+     - `capacity`：陣列容量
+     - `termArray`：項目儲存空間  
+   - 提供三個主要運算函式：
+     - `Add()`：多項式加法  
+     - `Mult()`：多項式乘法  
+     - `Eval()`：多項式值計算  
+
+---
+
+## 二、運算邏輯設計
+
+1. **多項式加法（Add）**  
+   - 同時遍歷兩個多項式陣列。  
+   - 若指數相同，則係數相加；若不同，將較大指數者直接加入結果。  
+   - 結束後若仍有剩餘項，直接附加至結果中。  
+
+2. **多項式乘法（Mult）**  
+   - 以雙層迴圈進行項與項相乘。  
+   - 對於結果中相同指數的項，將係數累加。  
+   - 完成後依指數由大至小排序，並移除係數為 0 的項。  
+
+3. **多項式值計算（Eval）**  
+   - 逐項代入輸入的 \( x \) 值。  
+   - 使用 `pow(x, exp)` 計算每項的冪次，並乘以係數後累加。
+
+---
+
+## 三、運算子多載與使用者介面
+
+1. **輸入運算子多載（`>>`）**  
+   - 讓使用者可直接使用 `cin >> p1` 的方式輸入多項式。  
+   - 讀入後自動依指數排序。
+
+2. **輸出運算子多載（`<<`）**  
+   - 以數學形式輸出多項式，例如 `3x^2 - 2x + 1`。  
+   - 自動處理正負號與常數項的格式化。
+
+---
 
 ## 程式實作
 
 以下為程式碼：
 
 ```cpp
-#include <stdio.h>
-#include <stdlib.h>
+#include <iostream>
+#include <cmath>
+#include <algorithm>
+using namespace std;
 
-/* ====== Ackermann 函數 ====== */
+//==============================
+// Term 類別：代表多項式的一個項
+//==============================
+class Term {
+    // 讓 Polynomial 類別以及輸入/輸出運算子可以存取私有成員
+    friend class Polynomial;
+    friend istream& operator>>(istream&, class Polynomial&);
+    friend ostream& operator<<(ostream&, const class Polynomial&);
+private:
+    float coef; // 係數
+    int exp;    // 指數
+};
 
-// 遞迴版本
-// 根據數學定義：
-// A(0, n) = n + 1
-// A(m, 0) = A(m-1, 1)
-// A(m, n) = A(m-1, A(m, n-1))
-unsigned long long ack_recursive(unsigned long long m, unsigned long long n) {
-    if (m == 0ULL) {
-        return n + 1ULL;  // 規則 1：當 m=0 時，直接回傳 n+1
-    } else if (n == 0ULL) {
-        return ack_recursive(m - 1ULL, 1ULL);  // 規則 2：當 n=0 且 m>0，則呼叫 A(m-1, 1)
-    } else {
-        // 規則 3：一般情況，呼叫 A(m-1, A(m, n-1))
-        return ack_recursive(m - 1ULL, ack_recursive(m, n - 1ULL));
+//==============================
+// Polynomial 類別：多項式的主要結構
+//==============================
+class Polynomial {
+private:
+    Term *termArray; // 非零項陣列
+    int capacity;    // 陣列容量
+    int terms;       // 實際項數
+
+public:
+    // 建構函式
+    Polynomial(int cap = 10) {
+        capacity = cap;
+        terms = 0;
+        termArray = new Term[capacity];
     }
-}
 
-/* ====== 自製堆疊結構 (用來模擬呼叫堆疊) ====== */
-// 在非遞迴版本中，我們需要用一個手動建立的堆疊來模擬遞迴過程
-typedef struct {
-    unsigned long long *data; // 存放堆疊中的元素 (這裡存 m 的值)
-    size_t cap;               // 堆疊容量 (目前配置的大小)
-    size_t top;               // 堆疊頂端位置 (指向下一個可存放的位置)
-} ULLStack;
-
-// 初始化堆疊
-void initStack(ULLStack *st) {
-    st->data = NULL;
-    st->cap = 0;
-    st->top = 0;
-}
-
-// 釋放堆疊記憶體
-void freeStack(ULLStack *st) {
-    if (st->data) free(st->data);
-}
-
-// 動態擴充堆疊容量
-void reserve(ULLStack *st, size_t new_cap) {
-    if (new_cap <= st->cap) return;  // 如果新容量小於等於現有容量就不用擴充
-    unsigned long long *nd = (unsigned long long*)malloc(new_cap * sizeof(unsigned long long));
-    for (size_t i = 0; i < st->top; ++i) nd[i] = st->data[i];  // 把舊資料複製過來
-    free(st->data);
-    st->data = nd;
-    st->cap = new_cap;
-}
-
-// 壓入元素到堆疊
-void push(ULLStack *st, unsigned long long v) {
-    if (st->top >= st->cap) {
-        size_t nc = (st->cap == 0 ? 1024 : st->cap * 2);  // 若容量不足就擴充一倍
-        reserve(st, nc);
+    // 解構函式
+    ~Polynomial() {
+        delete[] termArray;
     }
-    st->data[st->top++] = v;  // 放入新元素並移動堆疊頂端
-}
 
-// 彈出堆疊頂端元素
-unsigned long long pop(ULLStack *st) {
-    return st->data[--st->top];
-}
+    //==============================
+    // 輸入運算子 >>
+    //==============================
+    friend istream& operator>>(istream& in, Polynomial& poly) {
+        cout << "請輸入多項式的項數：";
+        in >> poly.terms;
 
-// 檢查堆疊是否為空
-int empty(ULLStack *st) {
-    return st->top == 0;
-}
-
-/* ====== 非遞迴 Ackermann (手動堆疊) ====== */
-// 使用 while 迴圈 + 手動堆疊來模擬遞迴的呼叫過程
-unsigned long long ack_iterative(unsigned long long m, unsigned long long n) {
-    ULLStack st;
-    initStack(&st);
-    push(&st, m);  // 初始把 m 放入堆疊
-
-    while (!empty(&st)) {
-        m = pop(&st);  // 取出堆疊頂端的 m
-        if (m == 0ULL) {
-            n = n + 1ULL;  // 規則 1：A(0, n) = n+1
-        } else if (n == 0ULL) {
-            push(&st, m - 1ULL);  // 規則 2：A(m, 0) = A(m-1, 1)
-            n = 1ULL;
-        } else {
-            // 規則 3：A(m, n) = A(m-1, A(m, n-1))
-            // 先把外層的 m-1 壓入堆疊
-            push(&st, m - 1ULL);
-            // 再把 m 自己壓回去，模擬稍後還要再處理
-            push(&st, m);
-            // 將 n 減 1，表示去計算 A(m, n-1)
-            n = n - 1ULL;
+        if (poly.terms > poly.capacity) {
+            delete[] poly.termArray;
+            poly.capacity = poly.terms;
+            poly.termArray = new Term[poly.capacity];
         }
+
+        cout << "請輸入每項 (係數 指數)，例如：3 2 表示 3x^2：" << endl;
+        for (int i = 0; i < poly.terms; i++) {
+            cout << "第 " << i + 1 << " 項：";
+            in >> poly.termArray[i].coef >> poly.termArray[i].exp;
+        }
+
+        // 按指數由大到小排序
+        sort(poly.termArray, poly.termArray + poly.terms,
+             [](const Term& a, const Term& b) { return a.exp > b.exp; });
+
+        return in;
     }
 
-    freeStack(&st);
-    return n;
-}
+    //==============================
+    // 輸出運算子 <<
+    //==============================
+    friend ostream& operator<<(ostream& out, const Polynomial& poly) {
+        if (poly.terms == 0) {
+            out << "0";
+            return out;
+        }
 
-/* ====== 主程式 ====== */
+        for (int i = 0; i < poly.terms; i++) {
+            float c = poly.termArray[i].coef;
+            int e = poly.termArray[i].exp;
+
+            if (i > 0 && c > 0)
+                out << " + ";
+            else if (c < 0) {
+                out << " - ";
+                c = -c;
+            }
+
+            if (e == 0)
+                out << c;
+            else if (e == 1)
+                out << c << "x";
+            else
+                out << c << "x^" << e;
+        }
+        return out;
+    }
+
+    //==============================
+    // 加法函式 Add
+    //==============================
+    Polynomial Add(const Polynomial& poly) const {
+        Polynomial result(capacity + poly.capacity);
+        int i = 0, j = 0, k = 0;
+
+        while (i < terms && j < poly.terms) {
+            if (termArray[i].exp == poly.termArray[j].exp) {
+                float sum = termArray[i].coef + poly.termArray[j].coef;
+                if (fabs(sum) > 1e-6) {
+                    result.termArray[k].coef = sum;
+                    result.termArray[k].exp = termArray[i].exp;
+                    k++;
+                }
+                i++; j++;
+            } else if (termArray[i].exp > poly.termArray[j].exp)
+                result.termArray[k++] = termArray[i++];
+            else
+                result.termArray[k++] = poly.termArray[j++];
+        }
+
+        while (i < terms) result.termArray[k++] = termArray[i++];
+        while (j < poly.terms) result.termArray[k++] = poly.termArray[j++];
+
+        result.terms = k;
+        return result;
+    }
+
+    //==============================
+    // 乘法函式 Mult
+    //==============================
+    Polynomial Mult(const Polynomial& poly) const {
+        Polynomial result(terms * poly.terms + 1);
+
+        for (int i = 0; i < terms; i++) {
+            for (int j = 0; j < poly.terms; j++) {
+                float c = termArray[i].coef * poly.termArray[j].coef;
+                int e = termArray[i].exp + poly.termArray[j].exp;
+
+                bool found = false;
+                for (int k = 0; k < result.terms; k++) {
+                    if (result.termArray[k].exp == e) {
+                        result.termArray[k].coef += c;
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    result.termArray[result.terms].coef = c;
+                    result.termArray[result.terms].exp = e;
+                    result.terms++;
+                }
+            }
+        }
+
+        // 去除係數為 0 的項
+        int valid = 0;
+        for (int i = 0; i < result.terms; i++)
+            if (fabs(result.termArray[i].coef) > 1e-6)
+                result.termArray[valid++] = result.termArray[i];
+        result.terms = valid;
+
+        // 依照指數排序
+        sort(result.termArray, result.termArray + result.terms,
+             [](const Term& a, const Term& b) { return a.exp > b.exp; });
+
+        return result;
+    }
+
+    //==============================
+    // Eval：代入 x 計算值
+    //==============================
+    float Eval(float x) const {
+        float sum = 0;
+        for (int i = 0; i < terms; i++)
+            sum += termArray[i].coef * pow(x, termArray[i].exp);
+        return sum;
+    }
+};
+
+//==============================
+// 主程式區
+//==============================
 int main() {
-    unsigned long long m, n;
-    int how;
+    Polynomial p1, p2;
 
-    printf("輸入 m 與 n：");
-    scanf("%llu %llu", &m, &n);
+    cout << "=== 輸入第一個多項式 ===" << endl;
+    cin >> p1;
+    cout << "p1(x) = " << p1 << endl;
 
-    printf("選擇計算方式：1) 遞迴  2) 非遞迴  3) 兩者比對\n");
-    scanf("%d", &how);
+    cout << "\n=== 輸入第二個多項式 ===" << endl;
+    cin >> p2;
+    cout << "p2(x) = " << p2 << endl;
 
-    if (how == 1) {
-        // 單純使用遞迴版本
-        printf("遞迴結果 = %llu\n", ack_recursive(m, n));
-    } else if (how == 2) {
-        // 單純使用非遞迴版本
-        printf("非遞迴結果 = %llu\n", ack_iterative(m, n));
-    } else {
-        // 兩者都計算，並比對是否一致
-        unsigned long long a1 = ack_recursive(m, n);
-        unsigned long long a2 = ack_iterative(m, n);
-        printf("遞迴 = %llu, 非遞迴 = %llu\n", a1, a2);
-    }
+    Polynomial sum = p1.Add(p2);
+    Polynomial product = p1.Mult(p2);
+
+    cout << "\n--- 加法結果 ---" << endl;
+    cout << "p1 + p2 = " << sum << endl;
+
+    cout << "\n--- 乘法結果 ---" << endl;
+    cout << "p1 * p2 = " << product << endl;
+
+    float x;
+    cout << "\n請輸入要代入的 x 值：";
+    cin >> x;
+    cout << "p1(" << x << ") = " << p1.Eval(x) << endl;
+    cout << "p2(" << x << ") = " << p2.Eval(x) << endl;
 
     return 0;
 }
 
+
 ```
 
-## 效能分析
+## 效能分析（Performance Analysis）
 
-1. 時間複雜度：程式的時間複雜度約為 $O(2^n)$ 等級，因為 Ackermann 函數的成長速度遠快於一般線性或多項式演算法。
-2. 空間複雜度：空間複雜度可視為 $O(m \times n)$ 的規模，其中遞迴版本受到呼叫堆疊深度限制，而非遞迴版本則需要額外的堆疊記憶體來模擬遞迴。
+本程式的主要運算為 **多項式加法（Add）**、**多項式乘法（Mult）**、與 **代入運算（Eval）**。  
+以下針對各個函式的時間與空間複雜度進行分析。
+
+---
+
+## 一、時間複雜度分析
+
+| 函式名稱      | 主要運算內容               | 時間複雜度       | 說明 |
+|:-------------|:--------------------------|:----------------|:------|
+| `Add()`      | 以雙指標依序合併兩多項式項目 | **O(m + n)**   | 各多項式各遍歷一次，其中 m、n 為項數 |
+| `Mult()`     | 雙層迴圈進行逐項相乘與合併   | **O(m × n)**   | 每個項與另一多項式所有項相乘 |
+| `Eval()`     | 單層迴圈代入計算            | **O(n)**       | 每項各計算一次冪次與乘法 |
+| `operator>>` | 輸入並排序多項式項目        | **O(n log n)** | 排序使用 `std::sort()` |
+| `operator<<` | 輸出每項至螢幕              | **O(n)**       | 每項依序輸出一次 |
+
+---
+
+## 二、空間複雜度分析
+
+| 函式名稱      | 額外使用記憶體 | 空間複雜度    | 說明 |
+|:-------------|:--------------|:------------|:------|
+| `Add()`      | 暫存結果多項式 | **O(m + n)** | 新建一個存放相加結果的物件 |
+| `Mult()`     | 暫存乘積項目   | **O(m × n)** | 需儲存所有乘積項與中間合併結果 |
+| `Eval()`     | 常數級         | **O(1)**    | 僅使用累加變數 |
+| `operator>>` | 暫存輸入陣列   | **O(n)**    | 輸入階段暫存多項式項目 |
+
+---
+
+## 三、效能觀察與分析
+
+1. **加法運算**  
+   - 採用**雙指標合併法（Two-pointer Merge）**，效率與排序合併相同。  
+   - 對於稀疏多項式（項數少），運算速度非常快。
+
+2. **乘法運算**  
+   - 雙層迴圈為主要耗時部分，時間隨項數平方成長。  
+   - 若需處理大量項，可進一步改進為使用 **雜湊表（Hash Map）** 以提升合併效率。
+
+3. **代入運算**  
+   - 為線性時間，且運算次數與項數成正比。  
+   - 可透過 **Horner’s Rule（霍納法則）** 進一步優化。
+
+4. **記憶體使用**  
+   - 加法與乘法會建立新物件，不會改動原多項式資料。  
+   - 雖增加暫時性記憶體消耗，但維持資料安全與可讀性。
+
+---
+
+## 四、綜合比較表
+
+| 運算項目   | 時間複雜度 | 空間複雜度 | 
+|:----------|:----------|:----------|
+| 多項式加法 | O(m + n) | O(m + n) | 
+| 多項式乘法 | O(m × n) | O(m × n) | 
+| 代入運算   | O(n)     | O(1) | 
+
+---
+
 
 ## 測試與驗證
-<img width="426" height="123" alt="image" src="https://github.com/user-attachments/assets/a2d8eacc-a1e8-4f27-8186-95742cda29bc" />
-
-<img width="430" height="507" alt="image" src="https://github.com/user-attachments/assets/12457509-ebc9-465b-a71b-998a8afb45c4" />
-
-
-
+<img width="559" height="523" alt="image" src="https://github.com/user-attachments/assets/3b1db42d-6aff-4218-b0f7-bde47a98c329" />
 
 ### 測試案例
 
-| 測試案例 | 輸入參數 $(m,n)$ | 預期輸出 | 實際輸出 |
-| ---- | ------------ | ---- | ---- |
-| 測試一  | $(0,0)$      | 1    | 1    |
-| 測試二  | $(1,2)$      | 4    | 4    |
-| 測試三  | $(2,3)$      | 9    | 9    |
-| 測試四  | $(3,3)$      | 61   | 61   |
-| 測試五  | $(3,4)$      | 125  | 125  |
+| 類別         | 理論計算結果                                             | 程式輸出結果                                                     |  是否正確   |
+| **p₁(x)**   | 3x⁴ − 2x³ + 5x − 7                                      | 3x^4 - 2x^3 + 5x - 7                                            |     ✅     |
+| **p₂(x)**   | −1x⁴ + 2x³ − 5x + 10                                    | - 1x^4 + 2x^3 - 5x + 10                                         |     ✅     |
+| **p₁ + p₂** | 2x⁴ + 3                                                 | 2x^4 + 3                                                        |     ✅     |
+| **p₁ × p₂** | −3x⁸ + 8x⁷ − 4x⁶ − 20x⁵ + 57x⁴ − 34x³ − 25x² + 85x − 70 | - 3x^8 + 8x^7 - 4x^6 - 20x^5 + 57x^4 - 34x^3 - 25x^2 + 85x - 70 |     ✅     |
+| **p₁(2)**   | 35                                                      | 35                                                              |     ✅     |
+| **p₂(2)**   | 0                                                       | 0                                                               |     ✅     |
+
 
 
 ### 編譯與執行指令
 
 ```shell
-$ gcc hw1.c -o hw1
-$ ./hw1
+$ g++ hw1.cpp -o hw1
+$ hw1
 ```
 
 ### 結論
 
-程式能正確計算 Ackermann 函數 $A(m,n)$ 的值。
-在小範圍輸入（例如 $m \leq 3$）下，遞迴版與非遞迴版輸出結果一致，驗證程式邏輯正確。
-測試案例涵蓋了多種情況（$m=0$、$n=0$、$m,n>0$），有效驗證程式的正確性。
-需要注意的是，當 $m$ 或 $n$ 較大時，Ackermann 函數的成長極快，可能導致執行時間過長或記憶體不足。
+本次作業完成了多項式的加法、乘法與代入運算實作，  
+透過類別封裝與運算子多載，使程式結構更清晰、可讀性更高。  
 
-## 申論及開發報告
+整體而言，程式能：
+- 正確處理多項式運算與輸出格式。  
+- 具備良好的擴充性與維護性。  
+- 展現物件導向設計在數學運算中的實際應用價值。  
 
-### 開發過程中的挑戰
-
-1. 遞迴深度限制
-   C 語言的系統堆疊有限，當輸入稍微大一點時
-   (例如 $A(4,1)$)，遞迴版本可能會因呼叫深度過高而導致程式崩潰。
-3. 非遞迴的實作
-   必須手動設計一個堆疊結構，來模擬函式呼叫的展開與回溯。
-   如何正確地壓入與彈出參數，是確保計算正確性的關鍵。
-
-3. 效能上的限制
-   即使是非遞迴版本，當 $m$ 或 $n$ 過大時，計算步驟依然呈現爆炸性成長。
-   因此本程式僅適合用於展示程式設計技巧，而不適合作為實務計算工具。
-## 心得
-透過本次實作，我更加理解了 遞迴的運作機制，以及 如何用迴圈與堆疊結構來取代遞迴。
-Ackermann 函數雖然在實務上幾乎沒有應用，但它是一個很好的教材，能幫助我們清楚看到遞迴深度、空間使用，以及不同實作方式的差異。
-這題目的重點不在於「計算多大數字」，而在於體會「遞迴與非遞迴的思維轉換」。
